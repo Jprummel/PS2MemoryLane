@@ -1,4 +1,12 @@
-﻿# Default ignored files
+﻿# Build results
+
+[Dd]ebug/
+[Rr]elease/
+x64/
+[Bb]in/
+[Oo]bj/
+
+# Default ignored files
 /shelf/
 /workspace.xml
 # Rider ignored files
@@ -19,10 +27,3 @@
 *.user
 *.sln.docstates
 
-# Build results
-
-[Dd]ebug/
-[Rr]elease/
-x64/
-[Bb]in/
-[Oo]bj/
