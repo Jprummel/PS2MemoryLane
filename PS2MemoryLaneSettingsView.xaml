@@ -58,22 +58,14 @@
                      VerticalContentAlignment="Center"/>
         </DockPanel>
 
-        <TextBlock Text="INI Section / Key" FontWeight="SemiBold" Margin="0,0,0,4"/>
-        <DockPanel Margin="0,0,0,12">
-            <TextBox Text="{Binding Settings.Pcsx2IniSection}"
-                     Width="160"
-                     Margin="0,0,8,0"
-                     VerticalContentAlignment="Center"/>
-            <TextBox Text="{Binding Settings.Pcsx2IniKey}"
-                     Width="120"
-                     VerticalContentAlignment="Center"/>
-        </DockPanel>
-
         <CheckBox Content="Write file name only (PCSX2 memcards folder)"
                   IsChecked="{Binding Settings.WriteFileNameOnly}"
                   Margin="0,0,0,6"/>
         <CheckBox Content="Auto-create missing memory cards from template"
                   IsChecked="{Binding Settings.AutoCreateMissingCard}"
+                  Margin="0,0,0,6"/>
+        <CheckBox Content="Update PCSX2 memory cards folder (Folders/MemoryCards)"
+                  IsChecked="{Binding Settings.UpdateMemoryCardsFolder}"
                   Margin="0,0,0,6"/>
         <CheckBox Content="Restore previous memory card after game exits"
                   IsChecked="{Binding Settings.RestoreOnExit}"/>

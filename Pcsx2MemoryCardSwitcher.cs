@@ -13,6 +13,7 @@ namespace PS2MemoryLane
         private static readonly ILogger m_Logger = LogManager.GetLogger();
         private static readonly string[] m_KnownMemoryCardKeys = { "Slot1_Filename", "Mcd001" };
         private static readonly string[] m_KnownSlotEnableKeys = { "Slot1_Enable" };
+        private const string MemoryCardSectionName = "MemoryCards";
 
         private readonly MemoryCardManager m_MemoryCardManager;
 
@@ -35,7 +36,7 @@ namespace PS2MemoryLane
                 return;
             }
 
-            if (!TryResolveIniKey(settings, out var iniKey, out var previousValueFound, out var previousValue))
+            if (!TryResolveIniKey(settings, out var iniSection, out var iniKey, out var previousValueFound, out var previousValue))
             {
                 return;
             }
@@ -46,23 +47,23 @@ namespace PS2MemoryLane
                 return;
             }
 
-            if (!TryWriteFolderSettingIfNeeded(settings, writeFileNameOnly))
+            if (!TryUpdateMemoryCardsFolderSetting(settings))
             {
                 return;
             }
 
-            if (!IniFileEditor.TryWriteValue(settings.Pcsx2ConfigPath, settings.Pcsx2IniSection, iniKey, cardValue, out var error))
+            if (!IniFileEditor.TryWriteValue(settings.Pcsx2ConfigPath, iniSection, iniKey, cardValue, out var error))
             {
                 m_Logger.Error($"Failed to update PCSX2 config: {error}");
                 return;
             }
 
-            EnsurePrimaryKeysUpdated(settings, iniKey, cardValue);
-            EnsureSlotEnabled(settings);
+            EnsurePrimaryKeysUpdated(settings, iniSection, iniKey, cardValue);
+            EnsureSlotEnabled(settings, iniSection);
 
             m_LastGameId = game.Id;
             m_LastConfigPath = settings.Pcsx2ConfigPath;
-            m_LastSection = settings.Pcsx2IniSection;
+            m_LastSection = iniSection;
             m_LastKey = iniKey;
             m_PreviousValue = previousValue;
             m_PreviousValueFound = previousValueFound;
@@ -208,35 +209,39 @@ namespace PS2MemoryLane
             }
         }
 
-        private bool TryResolveIniKey(PS2MemoryLaneSettings settings, out string iniKey, out bool previousValueFound, out string previousValue)
+        private bool TryResolveIniKey(
+            PS2MemoryLaneSettings settings,
+            out string iniSection,
+            out string iniKey,
+            out bool previousValueFound,
+            out string previousValue)
         {
-            iniKey = settings.Pcsx2IniKey;
-            previousValueFound = IniFileEditor.TryReadValue(
-                settings.Pcsx2ConfigPath,
-                settings.Pcsx2IniSection,
-                iniKey,
-                out previousValue);
+            iniSection = MemoryCardSectionName;
+            previousValueFound = false;
+            previousValue = null;
 
-            if (previousValueFound)
-            {
-                return true;
-            }
-
-            if (IniFileEditor.TryFindKeyInSection(settings.Pcsx2ConfigPath, settings.Pcsx2IniSection, m_KnownMemoryCardKeys, out var detectedKey))
+            if (IniFileEditor.TryFindKeyInSection(settings.Pcsx2ConfigPath, iniSection, m_KnownMemoryCardKeys, out var detectedKey))
             {
                 iniKey = detectedKey;
                 previousValueFound = IniFileEditor.TryReadValue(
                     settings.Pcsx2ConfigPath,
-                    settings.Pcsx2IniSection,
+                    iniSection,
                     iniKey,
                     out previousValue);
+                return true;
             }
 
+            iniKey = m_KnownMemoryCardKeys[0];
             return true;
         }
 
         private bool ResolveWriteFileNameOnly(PS2MemoryLaneSettings settings, bool previousValueFound, string previousValue)
         {
+            if (settings.UpdateMemoryCardsFolder)
+            {
+                return true;
+            }
+
             if (settings.WriteFileNameOnly)
             {
                 return true;
@@ -255,9 +260,9 @@ namespace PS2MemoryLane
             return value.IndexOfAny(new[] { '\\', '/' }) >= 0 || value.Contains(":");
         }
 
-        private bool TryWriteFolderSettingIfNeeded(PS2MemoryLaneSettings settings, bool writeFileNameOnly)
+        private bool TryUpdateMemoryCardsFolderSetting(PS2MemoryLaneSettings settings)
         {
-            if (!writeFileNameOnly)
+            if (!settings.UpdateMemoryCardsFolder)
             {
                 return true;
             }
@@ -277,17 +282,17 @@ namespace PS2MemoryLane
             return true;
         }
 
-        private void EnsureSlotEnabled(PS2MemoryLaneSettings settings)
+        private void EnsureSlotEnabled(PS2MemoryLaneSettings settings, string iniSection)
         {
-            if (!IniFileEditor.TryFindKeyInSection(settings.Pcsx2ConfigPath, settings.Pcsx2IniSection, m_KnownSlotEnableKeys, out var enableKey))
+            if (!IniFileEditor.TryFindKeyInSection(settings.Pcsx2ConfigPath, iniSection, m_KnownSlotEnableKeys, out var enableKey))
             {
                 return;
             }
 
-            IniFileEditor.TryWriteValue(settings.Pcsx2ConfigPath, settings.Pcsx2IniSection, enableKey, "true", out _);
+            IniFileEditor.TryWriteValue(settings.Pcsx2ConfigPath, iniSection, enableKey, "true", out _);
         }
 
-        private void EnsurePrimaryKeysUpdated(PS2MemoryLaneSettings settings, string activeKey, string cardValue)
+        private void EnsurePrimaryKeysUpdated(PS2MemoryLaneSettings settings, string iniSection, string activeKey, string cardValue)
         {
             foreach (var key in m_KnownMemoryCardKeys)
             {
@@ -296,7 +301,7 @@ namespace PS2MemoryLane
                     continue;
                 }
 
-                IniFileEditor.TryWriteValue(settings.Pcsx2ConfigPath, settings.Pcsx2IniSection, key, cardValue, out _);
+                IniFileEditor.TryWriteValue(settings.Pcsx2ConfigPath, iniSection, key, cardValue, out _);
             }
         }
 

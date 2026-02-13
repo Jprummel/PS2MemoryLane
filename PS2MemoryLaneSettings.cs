@@ -25,6 +25,7 @@ namespace PS2MemoryLane
         private bool m_RestoreOnExit = true;
         private bool m_WriteFileNameOnly = false;
         private bool m_AutoCreateMissingCard = false;
+        private bool m_UpdateMemoryCardsFolder = true;
 
         /// <summary>
         /// Selected Playnite platform identifier.
@@ -75,6 +76,11 @@ namespace PS2MemoryLane
         /// Creates missing memory cards on-the-fly using the template.
         /// </summary>
         public bool AutoCreateMissingCard { get => m_AutoCreateMissingCard; set => SetValue(ref m_AutoCreateMissingCard, value); }
+
+        /// <summary>
+        /// Updates the [Folders] MemoryCards path to the output folder.
+        /// </summary>
+        public bool UpdateMemoryCardsFolder { get => m_UpdateMemoryCardsFolder; set => SetValue(ref m_UpdateMemoryCardsFolder, value); }
     }
 
     /// <summary>
@@ -526,6 +532,7 @@ namespace PS2MemoryLane
             m_MemoryCardManager = memoryCardManager;
 
             LoadSettings();
+            ApplyDefaultPcsx2ConfigPathIfMissing();
             CreateCommands();
         }
 
@@ -591,6 +598,28 @@ namespace PS2MemoryLane
         {
             var savedSettings = m_Plugin.LoadPluginSettings<PS2MemoryLaneSettings>();
             Settings = savedSettings ?? new PS2MemoryLaneSettings();
+        }
+
+        private void ApplyDefaultPcsx2ConfigPathIfMissing()
+        {
+            if (Settings == null || !string.IsNullOrWhiteSpace(Settings.Pcsx2ConfigPath))
+            {
+                return;
+            }
+
+            var documentsFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            if (string.IsNullOrWhiteSpace(documentsFolder))
+            {
+                return;
+            }
+
+            var defaultPath = Path.Combine(documentsFolder, "PCSX2", "inis", "PCSX2.ini");
+            if (!File.Exists(defaultPath))
+            {
+                return;
+            }
+
+            Settings.Pcsx2ConfigPath = defaultPath;
         }
 
         private void LoadPlatforms()
