@@ -1,0 +1,43 @@
+<UserControl x:Class="PS2MemoryLane.Views.PS2MemoryLaneSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             d:DesignHeight="400" d:DesignWidth="600"
+             Loaded="OnViewLoaded">
+    <StackPanel Margin="10" Orientation="Vertical">
+        <TextBlock Text="PlayStation 2 Platform" FontWeight="SemiBold" Margin="0,0,0,4"/>
+        <ComboBox ItemsSource="{Binding Platforms}"
+                  SelectedItem="{Binding SelectedPlatform}"
+                  DisplayMemberPath="Name"
+                  Margin="0,0,0,12"/>
+
+        <TextBlock Text="Template Memory Card" FontWeight="SemiBold" Margin="0,0,0,4"/>
+        <DockPanel Margin="0,0,0,12">
+            <Button Content="Browse"
+                    Command="{Binding BrowseTemplateCommand}"
+                    DockPanel.Dock="Right"
+                    MinWidth="80"
+                    Margin="6,0,0,0"/>
+            <TextBox Text="{Binding Settings.TemplateMemoryCardPath}"
+                     VerticalContentAlignment="Center"/>
+        </DockPanel>
+
+        <TextBlock Text="Output Folder" FontWeight="SemiBold" Margin="0,0,0,4"/>
+        <DockPanel Margin="0,0,0,16">
+            <Button Content="Browse"
+                    Command="{Binding BrowseOutputFolderCommand}"
+                    DockPanel.Dock="Right"
+                    MinWidth="80"
+                    Margin="6,0,0,0"/>
+            <TextBox Text="{Binding Settings.OutputFolderPath}"
+                     VerticalContentAlignment="Center"/>
+        </DockPanel>
+
+        <Button Content="Create memory cards"
+                Command="{Binding CreateMemoryCardsCommand}"
+                HorizontalAlignment="Left"
+                Padding="12,6"/>
+    </StackPanel>
+</UserControl>
