@@ -23,9 +23,7 @@ namespace PS2MemoryLane
         private string m_Pcsx2IniSection = "MemoryCards";
         private string m_Pcsx2IniKey = "Mcd001";
         private bool m_RestoreOnExit = true;
-        private bool m_WriteFileNameOnly = false;
         private bool m_AutoCreateMissingCard = false;
-        private bool m_UpdateMemoryCardsFolder = true;
 
         /// <summary>
         /// Selected Playnite platform identifier.
@@ -68,19 +66,9 @@ namespace PS2MemoryLane
         public bool RestoreOnExit { get => m_RestoreOnExit; set => SetValue(ref m_RestoreOnExit, value); }
 
         /// <summary>
-        /// Writes only the file name to the INI instead of an absolute path.
-        /// </summary>
-        public bool WriteFileNameOnly { get => m_WriteFileNameOnly; set => SetValue(ref m_WriteFileNameOnly, value); }
-
-        /// <summary>
         /// Creates missing memory cards on-the-fly using the template.
         /// </summary>
         public bool AutoCreateMissingCard { get => m_AutoCreateMissingCard; set => SetValue(ref m_AutoCreateMissingCard, value); }
-
-        /// <summary>
-        /// Updates the [Folders] MemoryCards path to the output folder.
-        /// </summary>
-        public bool UpdateMemoryCardsFolder { get => m_UpdateMemoryCardsFolder; set => SetValue(ref m_UpdateMemoryCardsFolder, value); }
     }
 
     /// <summary>

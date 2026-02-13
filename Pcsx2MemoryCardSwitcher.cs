@@ -41,8 +41,7 @@ namespace PS2MemoryLane
                 return;
             }
 
-            var writeFileNameOnly = ResolveWriteFileNameOnly(settings, previousValueFound, previousValue);
-            if (!TryResolveCardValue(game, settings, platformId, writeFileNameOnly, out var cardValue))
+            if (!TryResolveCardValue(game, settings, platformId, out var cardValue))
             {
                 return;
             }
@@ -153,7 +152,7 @@ namespace PS2MemoryLane
             return true;
         }
 
-        private bool TryResolveCardValue(Game game, PS2MemoryLaneSettings settings, Guid platformId, bool writeFileNameOnly, out string cardValue)
+        private bool TryResolveCardValue(Game game, PS2MemoryLaneSettings settings, Guid platformId, out string cardValue)
         {
             cardValue = null;
             if (!m_MemoryCardManager.TryGetMemoryCardFileName(platformId, game, settings.TemplateMemoryCardPath, out var fileName))
@@ -179,7 +178,7 @@ namespace PS2MemoryLane
                 }
             }
 
-            cardValue = writeFileNameOnly ? fileName : fullPath;
+            cardValue = fileName;
             return true;
         }
 
@@ -235,41 +234,11 @@ namespace PS2MemoryLane
             return true;
         }
 
-        private bool ResolveWriteFileNameOnly(PS2MemoryLaneSettings settings, bool previousValueFound, string previousValue)
-        {
-            if (settings.UpdateMemoryCardsFolder)
-            {
-                return true;
-            }
-
-            if (settings.WriteFileNameOnly)
-            {
-                return true;
-            }
-
-            if (!previousValueFound || string.IsNullOrWhiteSpace(previousValue))
-            {
-                return false;
-            }
-
-            return !ContainsPathSeparator(previousValue);
-        }
-
-        private bool ContainsPathSeparator(string value)
-        {
-            return value.IndexOfAny(new[] { '\\', '/' }) >= 0 || value.Contains(":");
-        }
-
         private bool TryUpdateMemoryCardsFolderSetting(PS2MemoryLaneSettings settings)
         {
-            if (!settings.UpdateMemoryCardsFolder)
-            {
-                return true;
-            }
-
             if (string.IsNullOrWhiteSpace(settings.OutputFolderPath))
             {
-                m_Logger.Warn("Write file name only is enabled but output folder is missing.");
+                m_Logger.Warn("Memory card folder is missing.");
                 return false;
             }
 
