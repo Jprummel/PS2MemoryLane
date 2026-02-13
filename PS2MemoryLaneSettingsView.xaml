@@ -39,5 +39,43 @@
                 Command="{Binding CreateMemoryCardsCommand}"
                 HorizontalAlignment="Left"
                 Padding="12,6"/>
+
+        <Separator Margin="0,16,0,16"/>
+
+        <TextBlock Text="Auto-Switch Memory Cards" FontWeight="SemiBold" Margin="0,0,0,6"/>
+        <CheckBox Content="Enable auto switch when launching a PS2 game"
+                  IsChecked="{Binding Settings.EnableAutoSwitch}"
+                  Margin="0,0,0,10"/>
+
+        <TextBlock Text="PCSX2 Config File" FontWeight="SemiBold" Margin="0,0,0,4"/>
+        <DockPanel Margin="0,0,0,12">
+            <Button Content="Browse"
+                    Command="{Binding BrowsePcsx2ConfigCommand}"
+                    DockPanel.Dock="Right"
+                    MinWidth="80"
+                    Margin="6,0,0,0"/>
+            <TextBox Text="{Binding Settings.Pcsx2ConfigPath}"
+                     VerticalContentAlignment="Center"/>
+        </DockPanel>
+
+        <TextBlock Text="INI Section / Key" FontWeight="SemiBold" Margin="0,0,0,4"/>
+        <DockPanel Margin="0,0,0,12">
+            <TextBox Text="{Binding Settings.Pcsx2IniSection}"
+                     Width="160"
+                     Margin="0,0,8,0"
+                     VerticalContentAlignment="Center"/>
+            <TextBox Text="{Binding Settings.Pcsx2IniKey}"
+                     Width="120"
+                     VerticalContentAlignment="Center"/>
+        </DockPanel>
+
+        <CheckBox Content="Write file name only (PCSX2 memcards folder)"
+                  IsChecked="{Binding Settings.WriteFileNameOnly}"
+                  Margin="0,0,0,6"/>
+        <CheckBox Content="Auto-create missing memory cards from template"
+                  IsChecked="{Binding Settings.AutoCreateMissingCard}"
+                  Margin="0,0,0,6"/>
+        <CheckBox Content="Restore previous memory card after game exits"
+                  IsChecked="{Binding Settings.RestoreOnExit}"/>
     </StackPanel>
 </UserControl>

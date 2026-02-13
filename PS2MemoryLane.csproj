@@ -49,6 +49,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="PS2MemoryLane.cs" />
+    <Compile Include="IniFileEditor.cs" />
+    <Compile Include="Pcsx2MemoryCardSwitcher.cs" />
     <Compile Include="PS2MemoryLaneSettings.cs" />
     <Compile Include="PS2MemoryLaneSettingsView.xaml.cs">
       <DependentUpon>PS2MemoryLaneSettingsView.xaml</DependentUpon>

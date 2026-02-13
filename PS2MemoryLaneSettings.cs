@@ -18,6 +18,13 @@ namespace PS2MemoryLane
         private Guid m_PlatformId = Guid.Empty;
         private string m_TemplateMemoryCardPath = string.Empty;
         private string m_OutputFolderPath = string.Empty;
+        private bool m_EnableAutoSwitch = false;
+        private string m_Pcsx2ConfigPath = string.Empty;
+        private string m_Pcsx2IniSection = "MemoryCards";
+        private string m_Pcsx2IniKey = "Mcd001";
+        private bool m_RestoreOnExit = true;
+        private bool m_WriteFileNameOnly = false;
+        private bool m_AutoCreateMissingCard = false;
 
         /// <summary>
         /// Selected Playnite platform identifier.
@@ -33,6 +40,41 @@ namespace PS2MemoryLane
         /// Output folder where memory cards will be created.
         /// </summary>
         public string OutputFolderPath { get => m_OutputFolderPath; set => SetValue(ref m_OutputFolderPath, value); }
+
+        /// <summary>
+        /// Enables auto-switching of PCSX2 memory cards when launching a PS2 game.
+        /// </summary>
+        public bool EnableAutoSwitch { get => m_EnableAutoSwitch; set => SetValue(ref m_EnableAutoSwitch, value); }
+
+        /// <summary>
+        /// Full path to PCSX2 configuration INI.
+        /// </summary>
+        public string Pcsx2ConfigPath { get => m_Pcsx2ConfigPath; set => SetValue(ref m_Pcsx2ConfigPath, value); }
+
+        /// <summary>
+        /// INI section that stores memory card settings.
+        /// </summary>
+        public string Pcsx2IniSection { get => m_Pcsx2IniSection; set => SetValue(ref m_Pcsx2IniSection, value); }
+
+        /// <summary>
+        /// INI key used for the memory card slot.
+        /// </summary>
+        public string Pcsx2IniKey { get => m_Pcsx2IniKey; set => SetValue(ref m_Pcsx2IniKey, value); }
+
+        /// <summary>
+        /// Restores the previous memory card value after the game closes.
+        /// </summary>
+        public bool RestoreOnExit { get => m_RestoreOnExit; set => SetValue(ref m_RestoreOnExit, value); }
+
+        /// <summary>
+        /// Writes only the file name to the INI instead of an absolute path.
+        /// </summary>
+        public bool WriteFileNameOnly { get => m_WriteFileNameOnly; set => SetValue(ref m_WriteFileNameOnly, value); }
+
+        /// <summary>
+        /// Creates missing memory cards on-the-fly using the template.
+        /// </summary>
+        public bool AutoCreateMissingCard { get => m_AutoCreateMissingCard; set => SetValue(ref m_AutoCreateMissingCard, value); }
     }
 
     /// <summary>
@@ -141,8 +183,16 @@ namespace PS2MemoryLane
     public sealed class MemoryCardManager
     {
         private static readonly char[] m_InvalidFileNameChars = Path.GetInvalidFileNameChars();
+        private static readonly string[] m_Ps2PlatformTokens =
+        {
+            "ps2",
+            "playstation2",
+            "sonyplaystation2"
+        };
 
         private readonly IPlayniteAPI m_PlayniteApi;
+        private readonly Dictionary<Guid, Dictionary<Guid, string>> m_FileNameCache =
+            new Dictionary<Guid, Dictionary<Guid, string>>();
 
         public MemoryCardManager(IPlayniteAPI playniteApi)
         {
@@ -154,6 +204,7 @@ namespace PS2MemoryLane
         /// </summary>
         public MemoryCardCreationResult CreateMemoryCards(Guid platformId, string templatePath, string outputFolder)
         {
+            ClearCache();
             var result = new MemoryCardCreationResult();
             if (!ValidateInputs(platformId, templatePath, outputFolder, result))
             {
@@ -169,6 +220,93 @@ namespace PS2MemoryLane
             EnsureOutputFolder(outputFolder);
             CreateCardsForGames(games, templatePath, outputFolder, result);
             return result;
+        }
+
+        /// <summary>
+        /// Clears cached file name mappings.
+        /// </summary>
+        public void ClearCache()
+        {
+            m_FileNameCache.Clear();
+        }
+
+        /// <summary>
+        /// Tries to resolve the memory card file name for a game based on platform ordering.
+        /// </summary>
+        public bool TryGetMemoryCardFileName(Guid platformId, Game game, string templatePath, out string fileName)
+        {
+            fileName = null;
+            if (game == null || platformId == Guid.Empty)
+            {
+                return false;
+            }
+
+            var extension = GetTemplateExtension(templatePath);
+            var map = GetOrBuildFileNameMap(platformId, extension);
+            return map.TryGetValue(game.Id, out fileName);
+        }
+
+        /// <summary>
+        /// Resolves the platform id, optionally auto-detecting PS2 platform names.
+        /// </summary>
+        public bool TryResolvePlatformId(Guid configuredPlatformId, out Guid resolvedPlatformId)
+        {
+            resolvedPlatformId = configuredPlatformId;
+            if (configuredPlatformId != Guid.Empty)
+            {
+                return true;
+            }
+
+            var platforms = m_PlayniteApi?.Database?.Platforms;
+            if (platforms == null)
+            {
+                return false;
+            }
+
+            foreach (var platform in platforms)
+            {
+                if (IsPs2PlatformName(platform?.Name))
+                {
+                    resolvedPlatformId = platform.Id;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private Dictionary<Guid, string> GetOrBuildFileNameMap(Guid platformId, string extension)
+        {
+            if (m_FileNameCache.TryGetValue(platformId, out var cached))
+            {
+                if (cached.Count > 0)
+                {
+                    var sample = cached.First().Value;
+                    if (sample != null && sample.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return cached;
+                    }
+                }
+            }
+
+            var map = BuildFileNameMap(platformId, extension);
+            m_FileNameCache[platformId] = map;
+            return map;
+        }
+
+        private Dictionary<Guid, string> BuildFileNameMap(Guid platformId, string extension)
+        {
+            var games = GetGamesForPlatform(platformId);
+            var map = new Dictionary<Guid, string>();
+            var usedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var game in games)
+            {
+                var fileName = BuildMemoryCardFileName(game, extension, usedNames);
+                map[game.Id] = fileName;
+            }
+
+            return map;
         }
 
         private bool ValidateInputs(Guid platformId, string templatePath, string outputFolder, MemoryCardCreationResult result)
@@ -210,6 +348,39 @@ namespace PS2MemoryLane
                 .OrderBy(game => game.Name, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(game => game.Id)
                 .ToList();
+        }
+
+        private bool IsPs2PlatformName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return false;
+            }
+
+            var normalized = NormalizePlatformName(name);
+            foreach (var token in m_Ps2PlatformTokens)
+            {
+                if (normalized.Contains(token))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private string NormalizePlatformName(string name)
+        {
+            var builder = new StringBuilder(name.Length);
+            foreach (var character in name)
+            {
+                if (char.IsLetterOrDigit(character))
+                {
+                    builder.Append(char.ToLowerInvariant(character));
+                }
+            }
+
+            return builder.ToString();
         }
 
         private void EnsureOutputFolder(string outputFolder)
@@ -334,6 +505,7 @@ namespace PS2MemoryLane
         private RelayCommand m_BrowseTemplateCommand;
         private RelayCommand m_BrowseOutputFolderCommand;
         private RelayCommand m_CreateMemoryCardsCommand;
+        private RelayCommand m_BrowsePcsx2ConfigCommand;
 
         /// <summary>
         /// Backing settings instance bound to the view.
@@ -347,11 +519,11 @@ namespace PS2MemoryLane
             }
         }
 
-        public PS2MemoryLaneSettingsViewModel(PS2MemoryLanePlugin plugin)
+        public PS2MemoryLaneSettingsViewModel(PS2MemoryLanePlugin plugin, MemoryCardManager memoryCardManager)
         {
             // Injecting your plugin instance is required for Save/Load method because Playnite saves data to a location based on what plugin requested the operation.
             m_Plugin = plugin;
-            m_MemoryCardManager = new MemoryCardManager(plugin.PlayniteApi);
+            m_MemoryCardManager = memoryCardManager;
 
             LoadSettings();
             CreateCommands();
@@ -403,6 +575,11 @@ namespace PS2MemoryLane
         public RelayCommand CreateMemoryCardsCommand => m_CreateMemoryCardsCommand;
 
         /// <summary>
+        /// Command to choose the PCSX2 configuration file.
+        /// </summary>
+        public RelayCommand BrowsePcsx2ConfigCommand => m_BrowsePcsx2ConfigCommand;
+
+        /// <summary>
         /// Reloads platform data from the Playnite database.
         /// </summary>
         public void RefreshPlatforms()
@@ -433,6 +610,7 @@ namespace PS2MemoryLane
 
             Platforms = new ObservableCollection<PlatformItem>(items);
             SyncSelectedPlatformFromSettings();
+            AutoSelectPlatformIfMissing();
         }
 
         private void SyncSelectedPlatformFromSettings()
@@ -451,11 +629,39 @@ namespace PS2MemoryLane
             SelectedPlatform = Platforms.FirstOrDefault(item => item.Id == Settings.PlatformId);
         }
 
+        private void AutoSelectPlatformIfMissing()
+        {
+            if (Settings == null || Platforms == null)
+            {
+                return;
+            }
+
+            if (Settings.PlatformId != Guid.Empty)
+            {
+                return;
+            }
+
+            var platformId = Guid.Empty;
+            if (!m_MemoryCardManager.TryResolvePlatformId(Guid.Empty, out platformId))
+            {
+                return;
+            }
+
+            var match = Platforms.FirstOrDefault(item => item.Id == platformId);
+            if (match == null)
+            {
+                return;
+            }
+
+            SelectedPlatform = match;
+        }
+
         private void CreateCommands()
         {
             m_BrowseTemplateCommand = new RelayCommand(BrowseTemplate);
             m_BrowseOutputFolderCommand = new RelayCommand(BrowseOutputFolder);
             m_CreateMemoryCardsCommand = new RelayCommand(CreateMemoryCards);
+            m_BrowsePcsx2ConfigCommand = new RelayCommand(BrowsePcsx2Config);
         }
 
         private void BrowseTemplate()
@@ -473,6 +679,15 @@ namespace PS2MemoryLane
             if (!string.IsNullOrWhiteSpace(selectedPath))
             {
                 Settings.OutputFolderPath = selectedPath;
+            }
+        }
+
+        private void BrowsePcsx2Config()
+        {
+            var selectedPath = m_Plugin.PlayniteApi.Dialogs.SelectFile("PCSX2 config (*.ini)|*.ini|All files (*.*)|*.*");
+            if (!string.IsNullOrWhiteSpace(selectedPath))
+            {
+                Settings.Pcsx2ConfigPath = selectedPath;
             }
         }
 
