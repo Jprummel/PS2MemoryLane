@@ -1,6 +1,6 @@
 ﻿AddonId: PS2MemoryLane
 Type: Generic
-InstallerManifestUrl: 
+InstallerManifestUrl: https://raw.githubusercontent.com/Jprummel/PS2MemoryLane/main/InstallerManifest.yaml
 ShortDescription: A PCSX2 Memory card manager
 Name: PS2 Memory Lane
 Author: Salogeo
